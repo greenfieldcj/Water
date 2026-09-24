@@ -1,0 +1,1411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Water Tracker</title>
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Water">
+<meta name="theme-color" content="#1a7fd4">
+<style>
+  :root{
+    color-scheme: light dark;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    --bg:#eef4fa;
+    --surface:#ffffff;
+    --surface-2:#f2f6fb;
+    --text:#0e1b2a;
+    --muted:#5b6f86;
+    --line:#dce6f1;
+    --accent:#1a7fd4;
+    --accent-soft:#d8ecfb;
+    --track:#dde8f3;
+    --good:#14805a;
+    --warn:#a86a12;
+    --bad:#b8402f;
+    --shadow:0 1px 2px rgba(14,27,42,.06), 0 10px 28px rgba(14,27,42,.07);
+    --radius:16px;
+  }
+  *, *::before, *::after{ box-sizing: inherit; }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0b1219;
+      --surface:#151f2a;
+      --surface-2:#1c2835;
+      --text:#e7eef6;
+      --muted:#97a9be;
+      --line:#263444;
+      --accent:#41a3ef;
+      --accent-soft:#17324a;
+      --track:#243343;
+      --good:#3bbd8c;
+      --warn:#d3a04a;
+      --bad:#e2766a;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0b1219;
+    --surface:#151f2a;
+    --surface-2:#1c2835;
+    --text:#e7eef6;
+    --muted:#97a9be;
+    --line:#263444;
+    --accent:#41a3ef;
+    --accent-soft:#17324a;
+    --track:#243343;
+    --good:#3bbd8c;
+    --warn:#d3a04a;
+    --bad:#e2766a;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px rgba(0,0,0,.35);
+  }
+  html{ scroll-padding-top: env(safe-area-inset-top, 0px); background: var(--bg); }
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size:16px; line-height:1.45; -webkit-text-size-adjust:100%;
+  }
+  .wrap{ max-width:720px; margin:0 auto; padding:16px 16px 48px; }
+  header.top{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+  .brand{ display:flex; align-items:center; gap:11px; }
+  .logo{ width:36px; height:36px; flex:0 0 auto; display:block;
+         filter: drop-shadow(0 2px 4px rgba(26,127,212,.35)); }
+  h1{ font-size:20px; margin:0; letter-spacing:-.01em; }
+  .sub{ color:var(--muted); font-size:13px; margin:0; }
+  .grow{ flex:1 1 auto; }
+  .pill{
+    font-size:12px; padding:4px 10px; border-radius:999px;
+    background:var(--surface-2); color:var(--muted); border:1px solid var(--line); white-space:nowrap;
+  }
+  .pill.ok{ color:var(--good); }
+  .pill.err{ color:var(--bad); }
+  .tabs{ display:flex; gap:6px; background:var(--surface-2); padding:4px; border-radius:12px; border:1px solid var(--line); margin-bottom:14px; }
+  .tabs button{
+    flex:1; padding:9px 10px; border:0; border-radius:9px; background:transparent;
+    color:var(--muted); font:inherit; font-size:14px; font-weight:600; cursor:pointer;
+  }
+  .tabs button[aria-selected="true"]{ background:var(--surface); color:var(--text); box-shadow:var(--shadow); }
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+    padding:16px; margin-bottom:14px; box-shadow:var(--shadow);
+  }
+  .card h2{ font-size:14px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:0 0 12px; font-weight:700; }
+  .pie-row{ display:flex; gap:20px; align-items:center; flex-wrap:wrap; }
+  .pie-box{ flex:0 0 auto; width:180px; max-width:46vw; }
+  .pie-box svg{ display:block; width:100%; height:auto; }
+  .readout{ flex:1 1 200px; min-width:180px; }
+  .big{ font-size:38px; font-weight:700; letter-spacing:-.02em; font-variant-numeric:tabular-nums; line-height:1.1; }
+  .big small{ font-size:17px; font-weight:600; color:var(--muted); }
+  .readout .of{ color:var(--muted); font-size:14px; margin-top:2px; }
+  .readout .left{ margin-top:10px; font-size:15px; font-weight:600; }
+  .pace{ margin-top:12px; padding:10px 12px; border-radius:10px; background:var(--surface-2); font-size:14px; border:1px solid var(--line); }
+  .pace strong{ font-weight:700; }
+  form.entry{ display:flex; gap:8px; align-items:stretch; flex-wrap:wrap; }
+  .field{ position:relative; flex:1 1 150px; }
+  .field input{
+    width:100%; padding:13px 44px 13px 13px; font:inherit; font-size:17px; font-variant-numeric:tabular-nums;
+    border:1px solid var(--line); border-radius:11px; background:var(--surface-2); color:var(--text);
+  }
+  .field .unit{ position:absolute; right:13px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:14px; pointer-events:none; }
+  button.primary{
+    padding:13px 20px; font:inherit; font-weight:700; border:0; border-radius:11px;
+    background:var(--accent); color:#fff; cursor:pointer; flex:0 0 auto;
+  }
+  button.primary:active{ transform:translateY(1px); }
+  .chips{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .chip{
+    padding:9px 14px; border-radius:999px; border:1px solid var(--line); background:var(--surface-2);
+    color:var(--text); font:inherit; font-size:14px; font-weight:600; cursor:pointer; font-variant-numeric:tabular-nums;
+  }
+  .chip:active{ background:var(--accent-soft); }
+  .msg{ font-size:13px; margin-top:8px; min-height:18px; color:var(--bad); }
+  .msg.ok{ color:var(--good); }
+  ul.log{ list-style:none; margin:0; padding:0; }
+  ul.log li{
+    display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--line);
+  }
+  ul.log li:last-child{ border-bottom:0; }
+  .log-time{ color:var(--muted); font-size:14px; width:84px; flex:0 0 auto; font-variant-numeric:tabular-nums; }
+  .log-amt{ font-weight:700; font-variant-numeric:tabular-nums; }
+  .log-run{ color:var(--muted); font-size:13px; font-variant-numeric:tabular-nums; }
+  .icon-btn{
+    margin-left:auto; border:1px solid var(--line); background:var(--surface-2); color:var(--muted);
+    border-radius:8px; width:32px; height:32px; font:inherit; font-size:15px; cursor:pointer; line-height:1;
+  }
+  .icon-btn:hover{ color:var(--bad); }
+  .empty{ color:var(--muted); font-size:14px; padding:6px 0; }
+  .rem-row{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .switch{ display:flex; align-items:center; gap:9px; cursor:pointer; font-size:15px; font-weight:600; }
+  .switch input{ width:18px; height:18px; accent-color:var(--accent); }
+  .note{ font-size:13px; color:var(--muted); margin-top:10px; }
+  .banner{
+    display:none; align-items:center; gap:12px; padding:13px 14px; border-radius:12px;
+    background:var(--accent-soft); border:1px solid var(--accent); margin-bottom:14px; font-weight:600;
+  }
+  .banner.show{ display:flex; }
+  .banner button{ margin-left:auto; border:0; background:var(--accent); color:#fff; border-radius:9px; padding:8px 14px; font:inherit; font-weight:700; cursor:pointer; }
+  .month-nav{ display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+  .month-nav button{
+    border:1px solid var(--line); background:var(--surface); color:var(--text); border-radius:10px;
+    width:38px; height:38px; font:inherit; font-size:16px; cursor:pointer;
+  }
+  .month-nav button[disabled]{ opacity:.4; cursor:default; }
+  .month-label{ font-weight:700; font-size:17px; flex:1; text-align:center; }
+  .stats{ display:grid; grid-template-columns:repeat(auto-fit, minmax(130px,1fr)); gap:10px; }
+  .stat{ background:var(--surface-2); border:1px solid var(--line); border-radius:12px; padding:11px 12px; }
+  .stat .k{ font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; font-weight:700; }
+  .stat .v{ font-size:20px; font-weight:700; font-variant-numeric:tabular-nums; margin-top:3px; }
+  .chart-scroll{ overflow-x:auto; }
+  .chart-scroll svg{ display:block; width:100%; min-width:460px; height:auto; }
+  table.days{ width:100%; border-collapse:collapse; font-size:14px; }
+  table.days th{ text-align:left; color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.05em; padding:6px 8px; border-bottom:1px solid var(--line); }
+  table.days td{ padding:8px; border-bottom:1px solid var(--line); font-variant-numeric:tabular-nums; }
+  table.days td.num{ text-align:right; }
+  table.days tr.met td.pct{ color:var(--good); font-weight:700; }
+  .table-scroll{ overflow-x:auto; }
+  .btn-row{ display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+  button.ghost{
+    padding:10px 14px; border:1px solid var(--line); background:var(--surface-2); color:var(--text);
+    border-radius:10px; font:inherit; font-size:14px; font-weight:600; cursor:pointer;
+  }
+  dialog.settings{
+    border:1px solid var(--line); border-radius:var(--radius); padding:0; background:var(--surface); color:var(--text);
+    width:min(440px, 92vw); box-shadow:var(--shadow);
+  }
+  dialog.settings::backdrop{ background:rgba(6,14,22,.5); }
+  .dlg-body{ padding:18px; }
+  .dlg-body h2{ margin:0 0 14px; font-size:17px; }
+  label.f{ display:block; margin-bottom:13px; font-size:14px; font-weight:600; }
+  label.f span{ display:block; color:var(--muted); font-weight:500; font-size:13px; margin-bottom:5px; }
+  label.f input, label.f select{
+    width:100%; padding:10px 11px; font:inherit; border:1px solid var(--line); border-radius:10px;
+    background:var(--surface-2); color:var(--text);
+  }
+  .two{ display:flex; gap:10px; }
+  .two > *{ flex:1; }
+  textarea.export{
+    width:100%; min-height:150px; margin-top:12px; padding:10px; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size:12px; border:1px solid var(--line); border-radius:10px; background:var(--surface-2); color:var(--text);
+  }
+  .hidden{ display:none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 24 24" role="img" aria-label="Water drop logo">
+        <path d="M12 2.2 L6.16 11.04 A7 7 0 1 0 17.84 11.04 Z" fill="var(--accent)"></path>
+        <ellipse cx="9.2" cy="15.8" rx="1.5" ry="2" fill="#ffffff" opacity="0.32"></ellipse>
+      </svg>
+      <div>
+        <h1>Water Tracker</h1>
+        <p class="sub" id="todayLabel">&nbsp;</p>
+      </div>
+    </div>
+    <div class="grow"></div>
+    <span class="pill" id="syncPill">Loading</span>
+    <button class="ghost" id="settingsBtn" type="button">Settings</button>
+  </header>
+
+  <div class="banner" id="reminderBanner" role="status">
+    <span id="reminderText">Time for water.</span>
+    <button type="button" id="bannerDismiss">Got it</button>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button type="button" id="tabToday" role="tab" aria-selected="true">Today</button>
+    <button type="button" id="tabReports" role="tab" aria-selected="false">Reports</button>
+  </div>
+
+  <!-- ================= TODAY ================= -->
+  <section id="viewToday">
+
+    <div class="card">
+      <div class="pie-row">
+        <div class="pie-box">
+          <svg viewBox="0 0 200 200" role="img" aria-labelledby="pieTitle">
+            <title id="pieTitle">Progress toward daily water goal</title>
+            <circle cx="100" cy="100" r="92" fill="var(--track)"></circle>
+            <path id="pieWedge" d="" fill="var(--accent)"></path>
+            <circle id="pieFull" cx="100" cy="100" r="92" fill="var(--accent)" class="hidden"></circle>
+            <circle cx="100" cy="100" r="92" fill="none" stroke="var(--line)" stroke-width="2"></circle>
+            <line x1="100" y1="8" x2="100" y2="24" stroke="var(--surface)" stroke-width="2" opacity="0.8"></line>
+            <line x1="192" y1="100" x2="176" y2="100" stroke="var(--surface)" stroke-width="2" opacity="0.8"></line>
+            <line x1="100" y1="192" x2="100" y2="176" stroke="var(--surface)" stroke-width="2" opacity="0.8"></line>
+            <line x1="8" y1="100" x2="24" y2="100" stroke="var(--surface)" stroke-width="2" opacity="0.8"></line>
+          </svg>
+        </div>
+        <div class="readout">
+          <div class="big" id="totalBig" aria-live="polite">0 <small>mL</small></div>
+          <div class="of" id="goalLine">of 4,000 mL goal</div>
+          <div class="left" id="remainLine">4,000 mL to go</div>
+          <div class="pace" id="paceLine">&nbsp;</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Log a drink</h2>
+      <form class="entry" id="entryForm">
+        <div class="field">
+          <input id="amountInput" type="number" inputmode="numeric" min="1" max="5000" step="1"
+                 placeholder="Amount" aria-label="Amount in milliliters" autocomplete="off">
+          <span class="unit">mL</span>
+        </div>
+        <button class="primary" type="submit">Add</button>
+      </form>
+      <div class="chips" id="presetChips"></div>
+      <div class="msg" id="entryMsg">&nbsp;</div>
+    </div>
+
+    <div class="card">
+      <h2>Reminders</h2>
+      <div class="rem-row">
+        <label class="switch"><input type="checkbox" id="remindToggle"> Hourly nudge while this page is open</label>
+        <label class="switch"><input type="checkbox" id="soundToggle"> Sound</label>
+      </div>
+      <div class="note" id="reminderNote"></div>
+    </div>
+
+    <div class="card">
+      <h2>Today's log</h2>
+      <ul class="log" id="logList"></ul>
+      <div class="btn-row">
+        <button class="ghost" type="button" id="exportDayBtn">Export today (CSV)</button>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ================= REPORTS ================= -->
+  <section id="viewReports" class="hidden">
+
+    <div class="card">
+      <div class="month-nav">
+        <button type="button" id="prevMonth" aria-label="Previous month">&#8249;</button>
+        <div class="month-label" id="monthLabel">&nbsp;</div>
+        <button type="button" id="nextMonth" aria-label="Next month">&#8250;</button>
+      </div>
+      <div class="stats" id="monthStats"></div>
+    </div>
+
+    <div class="card">
+      <h2>Daily totals</h2>
+      <div class="chart-scroll" id="monthChart"></div>
+    </div>
+
+    <div class="card">
+      <h2>Day by day</h2>
+      <div class="table-scroll" id="monthTable"></div>
+      <div class="btn-row">
+        <button class="ghost" type="button" id="exportMonthCsv">Export month (CSV)</button>
+        <button class="ghost" type="button" id="exportMonthTxt">Export summary (TXT)</button>
+        <button class="ghost" type="button" id="exportAllCsv">Export all days (CSV)</button>
+      </div>
+      <div class="btn-row">
+        <button class="ghost" type="button" id="backupBtn">Backup all data (JSON)</button>
+        <button class="ghost" type="button" id="restoreBtn">Restore from backup</button>
+        <input type="file" id="restoreInput" accept=".json,application/json" class="hidden">
+      </div>
+      <div class="msg" id="exportMsg">&nbsp;</div>
+      <textarea class="export hidden" id="exportBox" readonly aria-label="Report text to copy"></textarea>
+    </div>
+
+  </section>
+
+</div>
+
+<dialog class="settings" id="settingsDlg">
+  <form method="dialog" class="dlg-body" id="settingsForm">
+    <h2>Settings</h2>
+    <label class="f">
+      <span>Daily goal (mL)</span>
+      <input type="number" id="setGoal" min="100" max="20000" step="50" required>
+    </label>
+    <div class="two">
+      <label class="f">
+        <span>Day starts</span>
+        <select id="setStart"></select>
+      </label>
+      <label class="f">
+        <span>Day ends</span>
+        <select id="setEnd"></select>
+      </label>
+    </div>
+    <label class="f">
+      <span>Quick amounts (mL, comma separated)</span>
+      <input type="text" id="setPresets" inputmode="numeric" autocomplete="off">
+    </label>
+    <div class="msg" id="setMsg">&nbsp;</div>
+    <div class="btn-row">
+      <button class="primary" type="submit" id="setSave">Save</button>
+      <button class="ghost" type="button" id="setCancel">Cancel</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+(function(){
+  'use strict';
+
+  /* ---------------- constants & state ---------------- */
+
+  var LS_DAYS = 'hydro.days.v2';
+  var LS_SETTINGS = 'hydro.settings.v2';
+  var LS_DEVICE = 'hydro.device.v2';
+  var MAX_ENTRY = 5000;
+
+  var DEFAULT_SETTINGS = {
+    goalMl: 4000,
+    windowStart: 6,
+    windowEnd: 23,
+    presets: [250, 500, 750, 1000],
+    updatedAt: 0
+  };
+
+  var state = {
+    settings: cloneSettings(DEFAULT_SETTINGS),
+    device: { remindersOn: false, sound: true, lastFiredKey: '' },
+    days: {},
+    db: null,
+    sync: 'local',
+    reconciled: false,
+    month: null,
+    notifyMode: 'none'   // none | page | system
+  };
+
+  function cloneSettings(s){
+    return {
+      goalMl: s.goalMl,
+      windowStart: s.windowStart,
+      windowEnd: s.windowEnd,
+      presets: s.presets.slice(),
+      updatedAt: s.updatedAt || 0
+    };
+  }
+
+  /* ---------------- small helpers ---------------- */
+
+  function $(id){ return document.getElementById(id); }
+
+  function pad2(n){ return (n < 10 ? '0' : '') + n; }
+
+  function dateKey(d){
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  }
+
+  function todayKey(){ return dateKey(new Date()); }
+
+  function parseKey(key){
+    var p = key.split('-');
+    return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+  }
+
+  function fmtMl(ml){
+    var v = Math.round(ml);
+    return v.toLocaleString('en-US') + ' mL';
+  }
+
+  function fmtL(ml){
+    return (ml / 1000).toFixed(2) + ' L';
+  }
+
+  function fmtTime(ts){
+    var d = new Date(ts);
+    return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  }
+
+  function hourLabel(h){
+    var hh = ((h % 24) + 24) % 24;
+    var suffix = hh < 12 ? 'AM' : 'PM';
+    var base = hh % 12; if (base === 0) base = 12;
+    return base + ' ' + suffix;
+  }
+
+  function dayTotal(day){
+    if (!day || !day.entries) return 0;
+    var t = 0;
+    for (var i = 0; i < day.entries.length; i++) t += day.entries[i].ml;
+    return t;
+  }
+
+  function getDay(key){
+    var d = state.days[key];
+    if (d) return d;
+    return { date: key, entries: [], removed: [], goalMl: state.settings.goalMl, total: 0, updatedAt: 0 };
+  }
+
+  function newId(){
+    return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+  }
+
+  function esc(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+    });
+  }
+
+  /* ---------------- local storage ---------------- */
+
+  function loadLocal(){
+    try {
+      var rawS = localStorage.getItem(LS_SETTINGS);
+      if (rawS){
+        var s = JSON.parse(rawS);
+        if (s && typeof s === 'object'){
+          if (typeof s.goalMl === 'number' && s.goalMl > 0) state.settings.goalMl = s.goalMl;
+          if (typeof s.windowStart === 'number') state.settings.windowStart = s.windowStart;
+          if (typeof s.windowEnd === 'number') state.settings.windowEnd = s.windowEnd;
+          if (Array.isArray(s.presets) && s.presets.length) state.settings.presets = s.presets.slice(0, 6);
+          state.settings.updatedAt = s.updatedAt || 0;
+        }
+      }
+    } catch (e){ /* storage unavailable */ }
+
+    try {
+      var rawD = localStorage.getItem(LS_DAYS);
+      if (rawD){
+        var days = JSON.parse(rawD);
+        if (days && typeof days === 'object'){
+          for (var k in days){
+            if (Object.prototype.hasOwnProperty.call(days, k)) state.days[k] = normalizeDay(k, days[k]);
+          }
+        }
+      }
+    } catch (e2){ /* storage unavailable */ }
+
+    try {
+      var rawV = localStorage.getItem(LS_DEVICE);
+      if (rawV){
+        var v = JSON.parse(rawV);
+        if (v && typeof v === 'object'){
+          state.device.remindersOn = !!v.remindersOn;
+          state.device.sound = v.sound !== false;
+          state.device.lastFiredKey = v.lastFiredKey || '';
+        }
+      }
+    } catch (e3){ /* storage unavailable */ }
+  }
+
+  function normalizeDay(key, raw){
+    var day = { date: key, entries: [], removed: [], goalMl: state.settings.goalMl, total: 0, updatedAt: 0 };
+    if (!raw || typeof raw !== 'object') return day;
+    if (Array.isArray(raw.entries)){
+      for (var i = 0; i < raw.entries.length; i++){
+        var e = raw.entries[i];
+        if (e && typeof e.ml === 'number' && e.ml > 0 && typeof e.id === 'string'){
+          day.entries.push({ id: e.id, ml: e.ml, at: typeof e.at === 'number' ? e.at : 0 });
+        }
+      }
+    }
+    if (Array.isArray(raw.removed)) day.removed = raw.removed.filter(function(x){ return typeof x === 'string'; });
+    if (typeof raw.goalMl === 'number' && raw.goalMl > 0) day.goalMl = raw.goalMl;
+    if (typeof raw.updatedAt === 'number') day.updatedAt = raw.updatedAt;
+    day.entries.sort(function(a, b){ return a.at - b.at; });
+    day.total = dayTotal(day);
+    return day;
+  }
+
+  function saveLocal(){
+    var ok = true;
+    try { localStorage.setItem(LS_DAYS, JSON.stringify(state.days)); } catch (e){ ok = false; }
+    try { localStorage.setItem(LS_SETTINGS, JSON.stringify(state.settings)); } catch (e2){ ok = false; }
+    setSync(ok ? 'ok' : 'error');
+  }
+
+  function saveDevice(){
+    try { localStorage.setItem(LS_DEVICE, JSON.stringify(state.device)); } catch (e){}
+  }
+
+  /* ---------------- storage status ---------------- */
+
+  function setSync(mode){
+    var pill = $('syncPill');
+    pill.className = 'pill';
+    if (mode === 'error'){
+      pill.textContent = 'Not saving';
+      pill.classList.add('err');
+      pill.title = 'This browser is blocking storage. Private browsing can cause this.';
+    } else {
+      pill.textContent = 'Saved on this device';
+      pill.classList.add('ok');
+      pill.title = 'Your log is stored on this device. Use Backup to copy it elsewhere.';
+    }
+  }
+
+  // No server in this build: every write goes to device storage in saveLocal().
+  function persistDay(){}
+  function persistSettings(){}
+
+  /* ---------------- mutations ---------------- */
+
+  function addDrink(ml){
+    var key = todayKey();
+    var day = getDay(key);
+    day = {
+      date: key,
+      entries: day.entries.concat([{ id: newId(), ml: ml, at: Date.now() }]),
+      removed: day.removed.slice(),
+      goalMl: state.settings.goalMl,
+      updatedAt: Date.now(),
+      total: 0
+    };
+    day.entries.sort(function(a, b){ return a.at - b.at; });
+    day.total = dayTotal(day);
+    state.days[key] = day;
+    saveLocal();
+    persistDay(day);
+    renderAll();
+  }
+
+  function removeEntry(key, id){
+    var day = state.days[key];
+    if (!day) return;
+    var entries = day.entries.filter(function(e){ return e.id !== id; });
+    var removed = day.removed.concat([id]);
+    var next = {
+      date: key,
+      entries: entries,
+      removed: removed.slice(-300),
+      goalMl: day.goalMl,
+      updatedAt: Date.now(),
+      total: 0
+    };
+    next.total = dayTotal(next);
+    state.days[key] = next;
+    saveLocal();
+    persistDay(next);
+    renderAll();
+  }
+
+  /* ---------------- pie ---------------- */
+
+  function wedgePath(cx, cy, r, frac){
+    if (frac <= 0) return '';
+    var angle = frac * 2 * Math.PI - Math.PI / 2;
+    var x = cx + r * Math.cos(angle);
+    var y = cy + r * Math.sin(angle);
+    var large = frac > 0.5 ? 1 : 0;
+    return 'M ' + cx + ' ' + cy +
+           ' L ' + cx + ' ' + (cy - r) +
+           ' A ' + r + ' ' + r + ' 0 ' + large + ' 1 ' + x.toFixed(2) + ' ' + y.toFixed(2) +
+           ' Z';
+  }
+
+  function renderPie(frac){
+    var wedge = $('pieWedge');
+    var full = $('pieFull');
+    if (frac >= 1){
+      wedge.setAttribute('d', '');
+      full.classList.remove('hidden');
+    } else {
+      full.classList.add('hidden');
+      wedge.setAttribute('d', wedgePath(100, 100, 92, frac));
+    }
+  }
+
+  /* ---------------- pace ---------------- */
+
+  function paceText(total, goal){
+    var now = new Date();
+    var h = now.getHours() + now.getMinutes() / 60;
+    var s = state.settings.windowStart;
+    var e = state.settings.windowEnd;
+    if (e <= s) e += 24;
+    var span = e - s;
+    var frac = span > 0 ? (h - s) / span : 0;
+    if (frac < 0) frac = 0;
+    if (frac > 1) frac = 1;
+
+    if (total >= goal){
+      return 'Goal met. ' + fmtMl(total - goal) + ' over.';
+    }
+    var expected = goal * frac;
+    var diff = total - expected;
+    var remaining = goal - total;
+    var hoursLeft = e - h;
+
+    if (h < s){
+      return 'Day starts at ' + hourLabel(s) + '. ' + fmtMl(remaining) + ' to go.';
+    }
+    if (hoursLeft <= 0){
+      return 'Past ' + hourLabel(e) + '. ' + fmtMl(remaining) + ' short of goal.';
+    }
+    var rate = remaining / hoursLeft;
+    var pacePart = 'About <strong>' + fmtMl(rate) + '/hr</strong> to finish by ' + hourLabel(e) + '.';
+    if (diff >= -50 && diff <= 50) return 'On pace. ' + pacePart;
+    if (diff > 50) return '<strong>Ahead</strong> by ' + fmtMl(diff) + '. ' + pacePart;
+    return '<strong>Behind</strong> by ' + fmtMl(-diff) + '. ' + pacePart;
+  }
+
+  /* ---------------- render: today ---------------- */
+
+  function renderToday(){
+    var key = todayKey();
+    var day = getDay(key);
+    var total = day.total;
+    var goal = state.settings.goalMl;
+    var frac = goal > 0 ? total / goal : 0;
+
+    $('todayLabel').textContent = parseKey(key).toLocaleDateString('en-US', {
+      weekday: 'long', month: 'long', day: 'numeric'
+    });
+
+    renderPie(frac);
+
+    $('totalBig').innerHTML = esc(Math.round(total).toLocaleString('en-US')) + ' <small>mL</small>';
+    $('goalLine').textContent = fmtL(total) + ' of ' + fmtL(goal) + ' goal \u00b7 ' + Math.round(frac * 100) + '%';
+    $('remainLine').textContent = total >= goal
+      ? 'Goal met for today'
+      : fmtMl(goal - total) + ' to go';
+    $('paceLine').innerHTML = paceText(total, goal);
+
+    renderLog(key, day);
+    renderReminderNote();
+  }
+
+  function renderLog(key, day){
+    var list = $('logList');
+    list.innerHTML = '';
+    if (!day.entries.length){
+      var li = document.createElement('li');
+      li.className = 'empty';
+      li.textContent = 'Nothing logged yet today.';
+      list.appendChild(li);
+      return;
+    }
+    var running = 0;
+    var rows = [];
+    for (var j = 0; j < day.entries.length; j++){
+      running += day.entries[j].ml;
+      rows.push({ e: day.entries[j], run: running });
+    }
+    rows.reverse();
+    for (var k = 0; k < rows.length; k++){
+      var row = rows[k];
+      var item = document.createElement('li');
+      item.innerHTML =
+        '<span class="log-time">' + esc(fmtTime(row.e.at)) + '</span>' +
+        '<span class="log-amt">' + esc(Math.round(row.e.ml).toLocaleString('en-US')) + ' mL</span>' +
+        '<span class="log-run">running ' + esc(Math.round(row.run).toLocaleString('en-US')) + ' mL</span>' +
+        '<button class="icon-btn" type="button" aria-label="Delete entry">&times;</button>';
+      (function(entryId){
+        item.querySelector('button').addEventListener('click', function(){
+          removeEntry(key, entryId);
+        });
+      })(row.e.id);
+      list.appendChild(item);
+    }
+  }
+
+  function renderPresets(){
+    var box = $('presetChips');
+    box.innerHTML = '';
+    for (var i = 0; i < state.settings.presets.length; i++){
+      (function(ml){
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'chip';
+        b.textContent = '+' + ml.toLocaleString('en-US') + ' mL';
+        b.addEventListener('click', function(){
+          addDrink(ml);
+          flash($('entryMsg'), 'Logged ' + fmtMl(ml) + '.', true);
+        });
+        box.appendChild(b);
+      })(state.settings.presets[i]);
+    }
+  }
+
+  function flash(el, text, ok){
+    el.textContent = text;
+    el.className = 'msg' + (ok ? ' ok' : '');
+    window.clearTimeout(el._t);
+    el._t = window.setTimeout(function(){
+      el.textContent = '\u00a0';
+      el.className = 'msg';
+    }, 2600);
+  }
+
+  /* ---------------- render: reports ---------------- */
+
+  function monthKeyOf(date){ return date.getFullYear() + '-' + pad2(date.getMonth() + 1); }
+
+  function monthDays(monthKey){
+    var parts = monthKey.split('-');
+    var y = Number(parts[0]), m = Number(parts[1]) - 1;
+    var count = new Date(y, m + 1, 0).getDate();
+    var out = [];
+    for (var d = 1; d <= count; d++){
+      var key = y + '-' + pad2(m + 1) + '-' + pad2(d);
+      var day = state.days[key];
+      out.push({
+        key: key,
+        date: new Date(y, m, d),
+        total: day ? day.total : 0,
+        goal: day && day.goalMl ? day.goalMl : state.settings.goalMl,
+        entries: day ? day.entries.length : 0,
+        logged: !!(day && day.entries.length)
+      });
+    }
+    return out;
+  }
+
+  function monthStats(rows, monthKey){
+    var today = new Date();
+    var isCurrent = monthKeyOf(today) === monthKey;
+    var elapsed = isCurrent ? today.getDate() : rows.length;
+    var considered = rows.slice(0, elapsed);
+    var total = 0, met = 0, logged = 0, best = 0, bestKey = '';
+    for (var i = 0; i < considered.length; i++){
+      total += considered[i].total;
+      if (considered[i].total >= considered[i].goal) met++;
+      if (considered[i].logged) logged++;
+      if (considered[i].total > best){ best = considered[i].total; bestKey = considered[i].key; }
+    }
+    var avg = considered.length ? total / considered.length : 0;
+    return {
+      total: total, met: met, logged: logged, best: best, bestKey: bestKey,
+      avg: avg, elapsed: considered.length,
+      goal: state.settings.goalMl
+    };
+  }
+
+  function renderReports(){
+    if (!state.month) state.month = monthKeyOf(new Date());
+    var mk = state.month;
+    var rows = monthDays(mk);
+    var st = monthStats(rows, mk);
+    var first = parseKey(mk + '-01');
+
+    $('monthLabel').textContent = first.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    $('nextMonth').disabled = (mk >= monthKeyOf(new Date()));
+
+    var pctOfGoal = st.goal > 0 ? Math.round((st.avg / st.goal) * 100) : 0;
+    var stats = [
+      ['Total', fmtL(st.total)],
+      ['Daily average', fmtMl(st.avg)],
+      ['Average vs goal', pctOfGoal + '%'],
+      ['Days at goal', st.met + ' of ' + st.elapsed],
+      ['Days logged', st.logged + ' of ' + st.elapsed],
+      ['Best day', st.best ? fmtMl(st.best) : '\u2014']
+    ];
+    var html = '';
+    for (var i = 0; i < stats.length; i++){
+      html += '<div class="stat"><div class="k">' + esc(stats[i][0]) + '</div><div class="v">' + esc(stats[i][1]) + '</div></div>';
+    }
+    $('monthStats').innerHTML = html;
+
+    renderMonthChart(rows);
+    renderMonthTable(rows);
+  }
+
+  function renderMonthChart(rows){
+    var goal = state.settings.goalMl;
+    var max = goal;
+    for (var i = 0; i < rows.length; i++) if (rows[i].total > max) max = rows[i].total;
+    if (max <= 0) max = 1;
+
+    var barW = 14, gap = 4, padL = 34, padR = 8, padT = 12, chartH = 130, labelH = 26;
+    var w = padL + padR + rows.length * (barW + gap);
+    var h = padT + chartH + labelH;
+    var goalY = padT + chartH - (goal / max) * chartH;
+
+    var svg = '<svg viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="Daily water totals for the month">';
+    svg += '<line x1="' + padL + '" y1="' + (padT + chartH) + '" x2="' + (w - padR) + '" y2="' + (padT + chartH) + '" stroke="var(--line)" stroke-width="1"/>';
+    svg += '<line x1="' + padL + '" y1="' + goalY.toFixed(1) + '" x2="' + (w - padR) + '" y2="' + goalY.toFixed(1) + '" stroke="var(--good)" stroke-width="1" stroke-dasharray="4 3"/>';
+    svg += '<text x="2" y="' + (goalY + 4).toFixed(1) + '" font-size="9" fill="var(--good)">goal</text>';
+    svg += '<text x="2" y="' + (padT + 8) + '" font-size="9" fill="var(--muted)">' + (max / 1000).toFixed(1) + 'L</text>';
+
+    var todayK = todayKey();
+    for (var j = 0; j < rows.length; j++){
+      var r = rows[j];
+      var x = padL + j * (barW + gap);
+      var bh = (r.total / max) * chartH;
+      var y = padT + chartH - bh;
+      var fill = r.total >= r.goal ? 'var(--good)' : 'var(--accent)';
+      if (r.total === 0) fill = 'var(--track)';
+      var barHeight = Math.max(r.total > 0 ? 2 : 1, bh);
+      svg += '<rect x="' + x + '" y="' + (padT + chartH - barHeight).toFixed(1) + '" width="' + barW +
+             '" height="' + barHeight.toFixed(1) + '" rx="3" fill="' + fill + '">' +
+             '<title>' + esc(r.key + ': ' + fmtMl(r.total)) + '</title></rect>';
+      var dnum = r.date.getDate();
+      var isToday = r.key === todayK;
+      if (dnum === 1 || dnum % 5 === 0 || isToday){
+        svg += '<text x="' + (x + barW / 2) + '" y="' + (padT + chartH + 14) + '" font-size="9" text-anchor="middle" fill="' +
+               (isToday ? 'var(--accent)' : 'var(--muted)') + '"' + (isToday ? ' font-weight="700"' : '') + '>' + dnum + '</text>';
+      }
+    }
+    svg += '</svg>';
+    $('monthChart').innerHTML = svg;
+  }
+
+  function renderMonthTable(rows){
+    var todayK = todayKey();
+    var hasData = false;
+    for (var q = 0; q < rows.length; q++){ if (rows[q].logged){ hasData = true; break; } }
+    if (!hasData){
+      $('monthTable').innerHTML = '<div class="empty">No days recorded in this month yet.</div>';
+      return;
+    }
+    var html = '<table class="days"><thead><tr>' +
+      '<th>Date</th><th>Day</th><th style="text-align:right">Total</th>' +
+      '<th style="text-align:right">% of goal</th><th style="text-align:right">Entries</th>' +
+      '</tr></thead><tbody>';
+    var any = false;
+    for (var i = 0; i < rows.length; i++){
+      var r = rows[i];
+      if (!r.logged && r.key > todayK) continue;
+      any = true;
+      var pct = r.goal > 0 ? Math.round((r.total / r.goal) * 100) : 0;
+      var met = r.total >= r.goal;
+      html += '<tr class="' + (met ? 'met' : '') + '">' +
+        '<td>' + esc(r.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })) + (r.key === todayK ? ' \u2022' : '') + '</td>' +
+        '<td>' + esc(r.date.toLocaleDateString('en-US', { weekday: 'short' })) + '</td>' +
+        '<td class="num">' + esc(Math.round(r.total).toLocaleString('en-US')) + ' mL</td>' +
+        '<td class="num pct">' + pct + '%</td>' +
+        '<td class="num">' + r.entries + '</td>' +
+        '</tr>';
+    }
+    html += '</tbody></table>';
+    if (!any) html = '<div class="empty">No days recorded in this month yet.</div>';
+    $('monthTable').innerHTML = html;
+  }
+
+  /* ---------------- exports ---------------- */
+
+  function offerFile(filename, text, mime){
+    var type = (mime || 'text/plain') + ';charset=utf-8';
+    try {
+      if (typeof w_URL() !== 'undefined' && w_URL() && typeof w_URL().createObjectURL === 'function'){
+        var blob = new Blob([text], { type: type });
+        var url = w_URL().createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.rel = 'noopener';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.setTimeout(function(){ w_URL().revokeObjectURL(url); }, 4000);
+        flash($('exportMsg'), 'Downloaded ' + filename, true);
+        $('exportBox').classList.add('hidden');
+        return;
+      }
+    } catch (e){ /* fall through to inline copy */ }
+    showInline(filename, text);
+  }
+
+  function w_URL(){
+    return (window.URL || window.webkitURL || null);
+  }
+
+  function showInline(filename, text){
+    var box = $('exportBox');
+    box.value = text;
+    box.classList.remove('hidden');
+    box.focus();
+    box.select();
+    flash($('exportMsg'), 'Download unavailable here \u2014 copy the text below (' + filename + ').', false);
+  }
+
+  function csvEscape(v){
+    var s = String(v);
+    if (s.indexOf(',') >= 0 || s.indexOf('"') >= 0 || s.indexOf('\n') >= 0){
+      return '"' + s.replace(/"/g, '""') + '"';
+    }
+    return s;
+  }
+
+  function dayCsv(key){
+    var day = getDay(key);
+    var lines = ['Date,Time,Amount (mL),Running total (mL),Goal (mL)'];
+    var run = 0;
+    for (var i = 0; i < day.entries.length; i++){
+      run += day.entries[i].ml;
+      lines.push([
+        key,
+        csvEscape(fmtTime(day.entries[i].at)),
+        Math.round(day.entries[i].ml),
+        Math.round(run),
+        Math.round(day.goalMl || state.settings.goalMl)
+      ].join(','));
+    }
+    lines.push('');
+    lines.push('Total,,' + Math.round(day.total) + ',,');
+    return lines.join('\n');
+  }
+
+  function monthCsv(monthKey){
+    var rows = monthDays(monthKey);
+    var lines = ['Date,Weekday,Total (mL),Goal (mL),Percent of goal,Entries,Goal met'];
+    for (var i = 0; i < rows.length; i++){
+      var r = rows[i];
+      var pct = r.goal > 0 ? Math.round((r.total / r.goal) * 100) : 0;
+      lines.push([
+        r.key,
+        r.date.toLocaleDateString('en-US', { weekday: 'short' }),
+        Math.round(r.total),
+        Math.round(r.goal),
+        pct + '%',
+        r.entries,
+        r.total >= r.goal ? 'yes' : 'no'
+      ].join(','));
+    }
+    return lines.join('\n');
+  }
+
+  function allCsv(){
+    var keys = [];
+    for (var k in state.days){ if (Object.prototype.hasOwnProperty.call(state.days, k)) keys.push(k); }
+    keys.sort();
+    var lines = ['Date,Weekday,Total (mL),Goal (mL),Percent of goal,Entries,Goal met'];
+    for (var i = 0; i < keys.length; i++){
+      var day = state.days[keys[i]];
+      var goal = day.goalMl || state.settings.goalMl;
+      var pct = goal > 0 ? Math.round((day.total / goal) * 100) : 0;
+      lines.push([
+        keys[i],
+        parseKey(keys[i]).toLocaleDateString('en-US', { weekday: 'short' }),
+        Math.round(day.total),
+        Math.round(goal),
+        pct + '%',
+        day.entries.length,
+        day.total >= goal ? 'yes' : 'no'
+      ].join(','));
+    }
+    return lines.join('\n');
+  }
+
+  function monthTxt(monthKey){
+    var rows = monthDays(monthKey);
+    var st = monthStats(rows, monthKey);
+    var title = parseKey(monthKey + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    var out = [];
+    out.push('WATER INTAKE - MONTHLY REPORT');
+    out.push(title);
+    out.push('Generated ' + new Date().toLocaleString('en-US'));
+    out.push('');
+    out.push('Daily goal:        ' + fmtMl(st.goal) + ' (' + fmtL(st.goal) + ')');
+    out.push('Days counted:      ' + st.elapsed);
+    out.push('Days logged:       ' + st.logged);
+    out.push('Days at goal:      ' + st.met + ' (' + (st.elapsed ? Math.round(st.met / st.elapsed * 100) : 0) + '%)');
+    out.push('Total volume:      ' + fmtL(st.total));
+    out.push('Daily average:     ' + fmtMl(st.avg) + ' (' + (st.goal ? Math.round(st.avg / st.goal * 100) : 0) + '% of goal)');
+    out.push('Best day:          ' + (st.bestKey ? st.bestKey + ' - ' + fmtMl(st.best) : 'n/a'));
+    out.push('');
+    out.push('DATE        DAY   TOTAL       % GOAL  ENTRIES  MET');
+    out.push('--------------------------------------------------');
+    var todayK = todayKey();
+    for (var i = 0; i < rows.length; i++){
+      var r = rows[i];
+      if (!r.logged && r.key > todayK) continue;
+      var pct = r.goal > 0 ? Math.round((r.total / r.goal) * 100) : 0;
+      out.push(
+        r.key + '  ' +
+        r.date.toLocaleDateString('en-US', { weekday: 'short' }) + '   ' +
+        padRight(Math.round(r.total).toLocaleString('en-US') + ' mL', 11) + ' ' +
+        padLeft(pct + '%', 6) + '  ' +
+        padLeft(String(r.entries), 7) + '  ' +
+        (r.total >= r.goal ? 'yes' : 'no')
+      );
+    }
+    return out.join('\n');
+  }
+
+  function padRight(s, n){ s = String(s); while (s.length < n) s += ' '; return s; }
+  function padLeft(s, n){ s = String(s); while (s.length < n) s = ' ' + s; return s; }
+
+  /* ---------------- backup & restore ---------------- */
+
+  function mergeDays(a, b){
+    if (!a) return b;
+    if (!b) return a;
+    var removed = {}, i;
+    for (i = 0; i < (a.removed || []).length; i++) removed[a.removed[i]] = true;
+    for (i = 0; i < (b.removed || []).length; i++) removed[b.removed[i]] = true;
+    var map = {}, all = (a.entries || []).concat(b.entries || []);
+    for (i = 0; i < all.length; i++){ if (!removed[all[i].id]) map[all[i].id] = all[i]; }
+    var entries = [];
+    for (var id in map){ if (Object.prototype.hasOwnProperty.call(map, id)) entries.push(map[id]); }
+    entries.sort(function(x, y){ return x.at - y.at; });
+    var removedList = [];
+    for (var rid in removed){ if (Object.prototype.hasOwnProperty.call(removed, rid)) removedList.push(rid); }
+    var out = {
+      date: a.date || b.date,
+      entries: entries,
+      removed: removedList.slice(-300),
+      goalMl: a.goalMl || b.goalMl || state.settings.goalMl,
+      updatedAt: Math.max(a.updatedAt || 0, b.updatedAt || 0),
+      total: 0
+    };
+    out.total = dayTotal(out);
+    return out;
+  }
+
+  function backupJson(){
+    return JSON.stringify({
+      app: 'water-tracker',
+      version: 2,
+      exportedAt: new Date().toISOString(),
+      settings: state.settings,
+      days: state.days
+    }, null, 2);
+  }
+
+  function restoreFrom(text){
+    var parsed;
+    try { parsed = JSON.parse(text); }
+    catch (e){ flash($('exportMsg'), 'That file is not valid JSON.', false); return; }
+    if (!parsed || typeof parsed !== 'object' || !parsed.days || typeof parsed.days !== 'object'){
+      flash($('exportMsg'), 'No water data found in that file.', false);
+      return;
+    }
+    var added = 0, merged = 0;
+    for (var key in parsed.days){
+      if (!Object.prototype.hasOwnProperty.call(parsed.days, key)) continue;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) continue;
+      var incoming = normalizeDay(key, parsed.days[key]);
+      if (state.days[key]){ state.days[key] = mergeDays(state.days[key], incoming); merged++; }
+      else { state.days[key] = incoming; added++; }
+    }
+    if (parsed.settings && typeof parsed.settings === 'object'){
+      var s = parsed.settings;
+      if ((s.updatedAt || 0) > state.settings.updatedAt){
+        if (typeof s.goalMl === 'number' && s.goalMl > 0) state.settings.goalMl = s.goalMl;
+        if (typeof s.windowStart === 'number') state.settings.windowStart = s.windowStart;
+        if (typeof s.windowEnd === 'number') state.settings.windowEnd = s.windowEnd;
+        if (Array.isArray(s.presets) && s.presets.length) state.settings.presets = s.presets.slice(0, 6);
+        state.settings.updatedAt = s.updatedAt;
+      }
+    }
+    saveLocal();
+    renderPresets();
+    renderAll();
+    flash($('exportMsg'), 'Restored: ' + added + ' new day(s), ' + merged + ' merged.', true);
+  }
+
+  /* ---------------- offline support ---------------- */
+
+  function registerServiceWorker(){
+    try {
+      if (!('serviceWorker' in navigator)) return;
+      if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') return;
+      navigator.serviceWorker.register('sw.js').then(function(){}, function(){});
+    } catch (e){ /* offline caching is optional */ }
+  }
+
+  /* ---------------- reminders ---------------- */
+
+  var audioCtx = null;
+
+  function beep(){
+    if (!state.device.sound) return;
+    try {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      if (!audioCtx) audioCtx = new Ctx();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      var t0 = audioCtx.currentTime;
+      for (var i = 0; i < 2; i++){
+        var osc = audioCtx.createOscillator();
+        var gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = i === 0 ? 660 : 880;
+        gain.gain.setValueAtTime(0.0001, t0 + i * 0.25);
+        gain.gain.exponentialRampToValueAtTime(0.18, t0 + i * 0.25 + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + i * 0.25 + 0.22);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(t0 + i * 0.25);
+        osc.stop(t0 + i * 0.25 + 0.24);
+      }
+    } catch (e){ /* audio unavailable */ }
+  }
+
+  function detectNotify(){
+    if (typeof window.Notification === 'undefined'){
+      state.notifyMode = 'page';
+      return;
+    }
+    state.notifyMode = (window.Notification.permission === 'granted') ? 'system' : 'page';
+  }
+
+  function requestNotify(){
+    if (typeof window.Notification === 'undefined') return;
+    try {
+      var p = window.Notification.requestPermission();
+      if (p && typeof p.then === 'function'){
+        p.then(function(res){
+          state.notifyMode = (res === 'granted') ? 'system' : 'page';
+          renderReminderNote();
+        }, function(){ state.notifyMode = 'page'; renderReminderNote(); });
+      }
+    } catch (e){ state.notifyMode = 'page'; }
+  }
+
+  function fireReminder(){
+    var day = getDay(todayKey());
+    var msg = 'Time for water \u2014 ' + fmtMl(day.total) + ' of ' + fmtMl(state.settings.goalMl) + ' so far.';
+    $('reminderText').textContent = msg;
+    $('reminderBanner').classList.add('show');
+    beep();
+    if (state.notifyMode === 'system'){
+      try { new window.Notification('Drink water', { body: msg, tag: 'hydro-hourly' }); }
+      catch (e){ /* ignore */ }
+    }
+  }
+
+  function nextReminderLabel(){
+    var now = new Date();
+    var h = now.getHours();
+    var s = state.settings.windowStart, e = state.settings.windowEnd;
+    var next;
+    if (h < s) next = s;
+    else if (h >= e) next = null;
+    else next = h + 1 <= e ? h + 1 : null;
+    if (next === null) return 'Next: ' + hourLabel(s) + ' tomorrow';
+    return 'Next: ' + hourLabel(next);
+  }
+
+  function renderReminderNote(){
+    var note = $('reminderNote');
+    var lines = [];
+    if (state.device.remindersOn){
+      lines.push(nextReminderLabel() + ', on the hour between ' +
+        hourLabel(state.settings.windowStart) + ' and ' + hourLabel(state.settings.windowEnd) + '.');
+    } else {
+      lines.push('Turn this on to get an on-screen nudge each hour while this page is open.');
+    }
+    if (state.notifyMode === 'system'){
+      lines.push('System notifications are allowed in this browser, but they still only fire while this page is open.');
+    } else {
+      lines.push('For alerts when this app is closed, use the calendar reminder file \u2014 a web app cannot wake your phone on its own.');
+    }
+    note.innerHTML = lines.map(function(l){ return esc(l); }).join('<br>');
+  }
+
+  function reminderTick(){
+    if (!state.device.remindersOn) return;
+    var now = new Date();
+    var h = now.getHours();
+    if (h < state.settings.windowStart || h > state.settings.windowEnd) return;
+    if (now.getMinutes() >= 6) return;
+    var key = todayKey() + ':' + h;
+    if (state.device.lastFiredKey === key) return;
+    state.device.lastFiredKey = key;
+    saveDevice();
+    fireReminder();
+  }
+
+  /* ---------------- settings dialog ---------------- */
+
+  function fillHourSelect(sel, selected){
+    sel.innerHTML = '';
+    for (var h = 0; h <= 23; h++){
+      var o = document.createElement('option');
+      o.value = String(h);
+      o.textContent = pad2(h) + ':00 (' + hourLabel(h) + ')';
+      if (h === selected) o.selected = true;
+      sel.appendChild(o);
+    }
+  }
+
+  function openSettings(){
+    $('setGoal').value = state.settings.goalMl;
+    fillHourSelect($('setStart'), state.settings.windowStart);
+    fillHourSelect($('setEnd'), state.settings.windowEnd);
+    $('setPresets').value = state.settings.presets.join(', ');
+    $('setMsg').textContent = '\u00a0';
+    var dlg = $('settingsDlg');
+    if (typeof dlg.showModal === 'function') dlg.showModal();
+    else dlg.setAttribute('open', 'open');
+  }
+
+  function closeSettings(){
+    var dlg = $('settingsDlg');
+    if (typeof dlg.close === 'function') dlg.close();
+    else dlg.removeAttribute('open');
+  }
+
+  function saveSettings(ev){
+    var goal = parseInt($('setGoal').value, 10);
+    if (!isFinite(goal) || goal < 100 || goal > 20000){
+      ev.preventDefault();
+      flash($('setMsg'), 'Goal must be between 100 and 20,000 mL.', false);
+      return;
+    }
+    var start = parseInt($('setStart').value, 10);
+    var end = parseInt($('setEnd').value, 10);
+    if (end <= start){
+      ev.preventDefault();
+      flash($('setMsg'), 'Day end must be later than day start.', false);
+      return;
+    }
+    var parts = $('setPresets').value.split(',');
+    var presets = [];
+    for (var i = 0; i < parts.length; i++){
+      var n = parseInt(String(parts[i]).trim(), 10);
+      if (isFinite(n) && n > 0 && n <= MAX_ENTRY) presets.push(n);
+    }
+    if (!presets.length){
+      ev.preventDefault();
+      flash($('setMsg'), 'Enter at least one valid quick amount.', false);
+      return;
+    }
+    state.settings.goalMl = goal;
+    state.settings.windowStart = start;
+    state.settings.windowEnd = end;
+    state.settings.presets = presets.slice(0, 6);
+    state.settings.updatedAt = Date.now();
+    saveLocal();
+    persistSettings();
+    renderPresets();
+    renderAll();
+  }
+
+  /* ---------------- views ---------------- */
+
+  function setView(view){
+    var isToday = view === 'today';
+    $('viewToday').classList.toggle('hidden', !isToday);
+    $('viewReports').classList.toggle('hidden', isToday);
+    $('tabToday').setAttribute('aria-selected', isToday ? 'true' : 'false');
+    $('tabReports').setAttribute('aria-selected', isToday ? 'false' : 'true');
+    if (!isToday) renderReports();
+  }
+
+  function renderAll(){
+    renderToday();
+    if (!$('viewReports').classList.contains('hidden')) renderReports();
+  }
+
+  function shiftMonth(delta){
+    var parts = (state.month || monthKeyOf(new Date())).split('-');
+    var d = new Date(Number(parts[0]), Number(parts[1]) - 1 + delta, 1);
+    var mk = monthKeyOf(d);
+    if (mk > monthKeyOf(new Date())) return;
+    state.month = mk;
+    renderReports();
+  }
+
+  /* ---------------- wiring ---------------- */
+
+  function init(){
+    loadLocal();
+    detectNotify();
+    setSync('local');
+    renderPresets();
+    setView('today');
+    renderAll();
+    registerServiceWorker();
+
+    $('entryForm').addEventListener('submit', function(ev){
+      ev.preventDefault();
+      var raw = $('amountInput').value;
+      var ml = parseInt(String(raw).trim(), 10);
+      if (!isFinite(ml) || ml <= 0){
+        flash($('entryMsg'), 'Enter an amount in mL.', false);
+        return;
+      }
+      if (ml > MAX_ENTRY){
+        flash($('entryMsg'), 'That is over ' + MAX_ENTRY + ' mL for one drink \u2014 check the number.', false);
+        return;
+      }
+      addDrink(ml);
+      $('amountInput').value = '';
+      flash($('entryMsg'), 'Logged ' + fmtMl(ml) + '.', true);
+    });
+
+    $('tabToday').addEventListener('click', function(){ setView('today'); });
+    $('tabReports').addEventListener('click', function(){ setView('reports'); });
+    $('prevMonth').addEventListener('click', function(){ shiftMonth(-1); });
+    $('nextMonth').addEventListener('click', function(){ shiftMonth(1); });
+
+    $('settingsBtn').addEventListener('click', openSettings);
+    $('setCancel').addEventListener('click', closeSettings);
+    $('settingsForm').addEventListener('submit', saveSettings);
+
+    $('bannerDismiss').addEventListener('click', function(){
+      $('reminderBanner').classList.remove('show');
+    });
+
+    var rt = $('remindToggle');
+    rt.checked = state.device.remindersOn;
+    rt.addEventListener('change', function(){
+      state.device.remindersOn = rt.checked;
+      saveDevice();
+      if (rt.checked){
+        requestNotify();
+        beep();
+      }
+      renderReminderNote();
+    });
+
+    var so = $('soundToggle');
+    so.checked = state.device.sound;
+    so.addEventListener('change', function(){
+      state.device.sound = so.checked;
+      saveDevice();
+      if (so.checked) beep();
+    });
+
+    $('exportDayBtn').addEventListener('click', function(){
+      var key = todayKey();
+      offerFile('water-' + key + '.csv', dayCsv(key), 'text/csv');
+    });
+    $('exportMonthCsv').addEventListener('click', function(){
+      offerFile('water-' + state.month + '.csv', monthCsv(state.month), 'text/csv');
+    });
+    $('exportMonthTxt').addEventListener('click', function(){
+      offerFile('water-' + state.month + '-summary.txt', monthTxt(state.month), 'text/plain');
+    });
+    $('exportAllCsv').addEventListener('click', function(){
+      offerFile('water-all-days.csv', allCsv(), 'text/csv');
+    });
+    $('backupBtn').addEventListener('click', function(){
+      offerFile('water-backup-' + todayKey() + '.json', backupJson(), 'application/json');
+    });
+    $('restoreBtn').addEventListener('click', function(){
+      $('restoreInput').click();
+    });
+    $('restoreInput').addEventListener('change', function(){
+      var file = $('restoreInput').files && $('restoreInput').files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function(){ restoreFrom(String(reader.result)); };
+      reader.onerror = function(){ flash($('exportMsg'), 'Could not read that file.', false); };
+      reader.readAsText(file);
+      $('restoreInput').value = '';
+    });
+
+    var lastDay = todayKey();
+    window.setInterval(function(){
+      var nowKey = todayKey();
+      if (nowKey !== lastDay){
+        lastDay = nowKey;
+        renderAll();
+      } else {
+        renderToday();
+      }
+      reminderTick();
+    }, 20000);
+  }
+
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+</body>
+</html>
